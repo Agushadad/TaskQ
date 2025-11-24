@@ -16,9 +16,11 @@ namespace TaskQ.Infrastructure.Stores
         #endregion
 
         #region Constructor
-        public SqlJobStore(IDbContextFactory<TaskQDbContext> dbContextFactory)
+        public SqlJobStore(IDbContextFactory<TaskQDbContext> dbContextFactory, IRetryStrategy retryStrategy, ILogger<JobEntity> logger)
         {
             _dbContextFactory = dbContextFactory;
+            _retryStrategy = retryStrategy;
+            _logger = logger;
         }
         #endregion
 
