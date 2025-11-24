@@ -18,6 +18,7 @@ var builder = Host.CreateDefaultBuilder(args)
 
         // Store
         services.AddSingleton<IJobStore, SqlJobStore>();
+        services.AddSingleton<IWorkerStore, SqlWorkerStore>();
 
         // Handlers
         services.AddTransient<TaskQ.Worker.JobHandlers.IJobHandler, SendEmailJobHandler>();

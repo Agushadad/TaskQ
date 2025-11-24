@@ -11,6 +11,7 @@ namespace TaskQ.Infrastructure.Persistence
         }
 
         public DbSet<JobEntity> Jobs => Set<JobEntity>();
+        public DbSet<WorkerEntity> Workers => Set<WorkerEntity>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -76,6 +77,22 @@ namespace TaskQ.Infrastructure.Persistence
             // Índice clave para TryAcquireNextJobAsync
             job.HasIndex(j => new { j.Status, j.NotBefore, j.Queue })
                .HasDatabaseName("IX_Jobs_Status_NotBefore_Queue");
+
+            var worker = modelBuilder.Entity<WorkerEntity>();
+            worker.ToTable("Workers", "dbo");
+
+            worker.HasKey(w => w.WorkerId);
+            worker.Property(w => w.WorkerId)
+                .HasColumnName("ID")
+                .IsRequired();
+
+            worker.Property(w => w.LastSeen)
+                .HasColumnName("LAST_SEEN")
+                .IsRequired();
+
+            worker.Property(w => w.StartedAt)
+                .HasColumnName("STARTED_AT")
+                .IsRequired();
         }
     }
 }

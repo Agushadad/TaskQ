@@ -16,7 +16,7 @@ namespace TaskQ.Core.Abstractions
         /// <param name="queue"></param>
         /// <param name="ct"></param>
         /// <returns></returns>
-        Task<Job?> TryAcquireNextJobAsync(string queue, CancellationToken ct);
+        Task<Job?> TryAcquireNextJobAsync(string queue, Guid workerId, CancellationToken ct);
         /// <summary>
         /// Marca un job como completado
         /// </summary>

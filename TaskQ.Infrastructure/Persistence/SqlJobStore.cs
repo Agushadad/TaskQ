@@ -74,21 +74,22 @@ namespace TaskQ.Infrastructure.Stores
         public async Task MarkSucceededAsync(Guid jobId, CancellationToken ct)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync(ct);
-
+            DateTime now = DateTime.UtcNow;
             var job = await db.Jobs.FindAsync(new object[] { jobId }, ct);
             if (job == null)
                 return;
 
             job.Status = JobStatus.Succeeded;
-            job.CompletedAt = DateTime.UtcNow;
-            job.UpdatedAt = DateTime.UtcNow;
+            job.CompletedAt = now;
+            job.UpdatedAt = now;
+            job.LastExecutionAt = now;
             job.LockedAt = null;
             job.LockedBy = null;
 
             await db.SaveChangesAsync(ct);
         }
 
-        public async Task<Job?> TryAcquireNextJobAsync(string queue, CancellationToken ct)
+        public async Task<Job?> TryAcquireNextJobAsync(string queue, Guid workerId, CancellationToken ct)
         {
             await using var db = await _dbContextFactory.CreateDbContextAsync(ct);
             await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -114,7 +115,7 @@ namespace TaskQ.Infrastructure.Stores
                 }
 
                 job.LockedAt = now;
-                job.LockedBy = Environment.MachineName;
+                job.LockedBy = workerId.ToString();
 
                 await db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
