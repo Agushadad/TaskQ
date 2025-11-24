@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using TaskQ.Core.Abstractions;
 using TaskQ.Core.Domain;
 using TaskQ.Infrastructure.Persistence;
@@ -10,6 +11,8 @@ namespace TaskQ.Infrastructure.Stores
     {
         #region Propiedades
         private readonly IDbContextFactory<TaskQDbContext> _dbContextFactory;
+        private readonly ILogger<JobEntity> _logger;
+        private readonly IRetryStrategy _retryStrategy;
         #endregion
 
         #region Constructor
@@ -55,6 +58,9 @@ namespace TaskQ.Infrastructure.Stores
             // Reintento
             if (job.Attempts < job.MaxAttempts)
             {
+                var delay = _retryStrategy.GetNextDelay(job.Attempts);
+
+                job.NotBefore = DateTime.UtcNow.Add(delay);
                 job.Status = JobStatus.Queued;
                 job.LockedAt = null;
                 job.LockedBy = null;
@@ -62,7 +68,7 @@ namespace TaskQ.Infrastructure.Stores
             else
             {
                 // Fracaso definitivo
-                job.Status = JobStatus.Failed;
+                job.Status = JobStatus.DeadLetter;
                 job.CompletedAt = DateTime.UtcNow;
                 job.LockedAt = null;
                 job.LockedBy = null;
@@ -96,6 +102,7 @@ namespace TaskQ.Infrastructure.Stores
             try
             {
                 var now = DateTime.UtcNow;
+                var LockUntil = now.AddMinutes(5);
 
                 var job = await db.Jobs
                     .FromSqlInterpolated($@"
@@ -104,7 +111,7 @@ namespace TaskQ.Infrastructure.Stores
             WHERE Queue = {queue}
               AND Status = {(byte)JobStatus.Queued}
               AND (NOT_BEFORE IS NULL OR NOT_BEFORE <= {now})
-              AND LOCKED_BY IS NULL
+              AND (LOCKED_BY IS NULL OR LOCKED_UNTIL < {now})
             ORDER BY CREATED_AT")
                     .FirstOrDefaultAsync(ct);
 
@@ -116,6 +123,7 @@ namespace TaskQ.Infrastructure.Stores
 
                 job.LockedAt = now;
                 job.LockedBy = workerId.ToString();
+                job.LockedUntil = LockUntil;
 
                 await db.SaveChangesAsync(ct);
                 await tx.CommitAsync(ct);
@@ -125,6 +133,7 @@ namespace TaskQ.Infrastructure.Stores
             catch (Exception ex)
             {
                 await tx.RollbackAsync(ct);
+                _logger.LogError(ex, "Error adquiriendo job de la cola {Queue}", queue);
                 return null;
             }
         }

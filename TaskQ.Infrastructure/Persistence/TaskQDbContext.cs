@@ -74,6 +74,9 @@ namespace TaskQ.Infrastructure.Persistence
                 .HasColumnName("LOCKED_BY")
                 .HasMaxLength(100);
 
+            job.Property(j => j.LockedUntil)
+              .HasColumnName("LOCKED_UNTIL");
+
             // Índice clave para TryAcquireNextJobAsync
             job.HasIndex(j => new { j.Status, j.NotBefore, j.Queue })
                .HasDatabaseName("IX_Jobs_Status_NotBefore_Queue");

@@ -17,5 +17,6 @@
         public string? LastError { get; set; }
         public DateTime? LockedAt { get; set; }
         public string? LockedBy { get; set; }
+        public DateTime? LockedUntil { get; set; }
     }
 }
